@@ -4,8 +4,6 @@ const { argv } = require('node:process')
 
 const csvjson = require('csvjson')
 
-let bioArray = []
-
 const command = argv[2]
 
 class Bio {
@@ -25,14 +23,8 @@ const readCSVFile = (filepath) => {
     quote: '""',
     headers: 'name,sex,age,height,weight',
   }
-  const stats = csvjson.toObject(data, options)
-  const headers = Object.keys(stats)
 
-  for (let i = 0; i < headers.length; i += 1) {
-    // eslint-disable-next-line max-len
-    bioArray.push(new Bio(stats[headers[i]].name, stats[headers[i]].sex, stats[headers[i]].age, stats[headers[i]].height, stats[headers[i]].weight))
-  }
-  return bioArray
+  return csvjson.toObject(data, options)
 }
 
 const writeCSVFile = (filepath, arrayBio) => {
@@ -88,7 +80,7 @@ const deletion = (bioObject, arrayBio) => {
   return null
 }
 
-readCSVFile('biostats.csv')
+let bioArray = readCSVFile('biostats.csv')
 
 switch (command) {
   case '-c':
