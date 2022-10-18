@@ -136,9 +136,9 @@ switch (command) {
           default:
             console.log('no sex is available')
         }
-        console.log(`age: ${bioArray.age}`)
-        console.log(`height: inches: ${bioArray.height} centimeters: ${(bioArray.height * 2.54).toFixed(2)}`)
-        console.log(`weight: pounds: ${bioArray.weight} kilograms: ${(bioArray.weight * 0.45359237).toFixed(2)}`)
+        console.log(`age: ${bioArray.age}
+height: inches: ${bioArray.height} centimeters: ${(bioArray.height * 2.54).toFixed(2)}
+weight: pounds: ${bioArray.weight} kilograms: ${(bioArray.weight * 0.45359237).toFixed(2)}`)
       }
     }
     break
