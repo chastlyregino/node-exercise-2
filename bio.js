@@ -1,194 +1,204 @@
-/* eslint-disable no-restricted-globals */
 const fs = require('node:fs')
 const { argv } = require('node:process')
-
 const csvjson = require('csvjson')
 
-const command = argv[2]
+const capitalCase = (name) => name.charAt(0).toUpperCase() + name.substring(1).toLowerCase()
 
-class Bio {
+const inToCm = (height) => height * 2.54
+
+const lbsToKg = (weight) => weight / 2.205
+
+class BioStat {
   constructor(name, sex, age, height, weight) {
-    this.name = name
-    this.sex = sex
-    this.age = age
-    this.height = height
-    this.weight = weight
+    this.name = capitalCase(name)
+    this.sex = sex.toUpperCase()
+    this.age = Number(age)
+    this.height = Number(height)
+    this.weight = Number(weight)
   }
+
+  isValidName() {
+    return typeof this.name === 'string'
+  }
+
+  isValidSex() {
+    return 'FM'.includes(this.sex)
+    && typeof this.sex === 'string'
+    && this.sex.length === 1
+  }
+
+  isValidAge() {
+    return !Number.isNaN(this.age)
+    && this.age >= 18
+  }
+
+  isValidHeight() {
+    return !Number.isNaN(this.height)
+  }
+
+  isValidWeight() {
+    return !Number.isNaN(this.weight)
+  }
+}
+
+const errorMessage = (bioObject) => {
+  let messageResult = []
+  if (bioObject.isValidName() === false) {
+    messageResult = [...messageResult, 'Name should be a string']
+  }
+  if (bioObject.isValidSex() === false) {
+    messageResult = [...messageResult, 'Incorrect sex']
+  }
+  if (bioObject.isValidAge() === false) {
+    messageResult = [...messageResult, 'Age is not a number or underaged']
+  }
+  if (bioObject.isValidHeight() === false) {
+    messageResult = [...messageResult, 'Height is not a number']
+  }
+  if (bioObject.isValidWeight() === false) {
+    messageResult = [...messageResult, 'Weight is not a number']
+  }
+  return messageResult.join(', ')
 }
 
 const readCSVFile = (filepath) => {
   const data = fs.readFileSync((__dirname, filepath), { encoding: 'utf8' })
   const options = {
     delimiter: ',',
-    quote: '""',
+    quote: '"',
     headers: 'name,sex,age,height,weight',
   }
 
-  return csvjson.toObject(data, options)
+  const stats = csvjson.toObject(data, options)
+  const headers = Object.keys(stats)
+  const map = new Map()
+
+  for (let i = 1; i < headers.length; i += 1) {
+    map.set(stats[headers[i]].name, stats[headers[i]])
+  }
+  return map
 }
 
-const writeCSVFile = (filepath, arrayBio) => {
+const writeCSVFile = (filepath, mapBio) => {
   try {
     const options = {
       delimiter: ',',
-      quote: '""',
+      quote: '"',
       headers: 'key',
     }
-    fs.writeFileSync(filepath, csvjson.toCSV(arrayBio, options), 'utf8', 'w')
+    const result = Array.from(mapBio.values())
+    fs.writeFileSync(filepath, csvjson.toCSV(result, options), 'utf8', 'w')
     return true
   } catch {
     return false
   }
 }
 
-const create = (bioObject, arrayBio) => {
-  if (!arrayBio.find((bio) => bio.name.toLowerCase() === bioObject.name.toLowerCase())) {
-    return [...arrayBio, bioObject]
+const create = (bioObject, mapBio) => {
+  if (!mapBio.has(bioObject.name)) {
+    const bioMap = mapBio
+    bioMap.set(bioObject.name, bioObject)
+    return bioMap
   }
   return null
 }
 
-const read = (bioObject, arrayBio) => {
-  if (arrayBio.find((bio) => bio.name.toLowerCase() === bioObject.toLowerCase())) {
-    return arrayBio.find((bio) => bio.name.toLowerCase() === bioObject.toLowerCase())
+const read = (bioName, mapBio) => {
+  if (mapBio.has(bioName)) {
+    return mapBio.get(bioName)
   }
   return null
 }
 
-const update = (bioObject, arrayBio) => {
-  if (arrayBio.find((bio) => bio.name.toLowerCase() === bioObject.name.toLowerCase())) {
-    // eslint-disable-next-line max-len
-    const bioIndex = arrayBio.findIndex((bio) => bio.name.toLowerCase() === bioObject.name.toLowerCase())
-    const { name } = bioObject
-    const { sex } = bioObject.sex
-    const { age } = bioObject.age
-    const { height } = bioObject.height
-    const { weight } = bioObject.weight
-    // eslint-disable-next-line no-param-reassign
-    arrayBio[bioIndex] = {
-      ...arrayBio[bioIndex], name, sex, age, height, weight,
-    }
-    return arrayBio
+const update = (bioObject, mapBio) => {
+  if (mapBio.has(bioObject.name)) {
+    const bioMap = mapBio
+    bioMap.set(bioObject.name, bioObject)
+    return bioMap
   }
   return null
 }
 
-const deletion = (bioObject, arrayBio) => {
-  if (arrayBio.find((bio) => bio.name.toLowerCase() === bioObject.toLowerCase())) {
-    return arrayBio.filter((bio) => bio.name.toLowerCase() !== bioObject.toLowerCase())
+const deletion = (bioName, mapBio) => {
+  const bioMap = mapBio
+  if (bioMap.delete(bioName)) {
+    return bioMap
   }
   return null
 }
 
 let bioArray = readCSVFile('biostats.csv')
+const [, , command, name, sex, age, height, weight] = argv
 
 switch (command) {
-  case '-c':
+  case '-c': {
     if (argv.length !== 8) {
       console.log('You do not have the right number of arguments to run this command')
     } else {
-      let name = argv[3]
-      let sex = argv[4]
-      const age = Number(argv[5])
-      const height = Number(argv[6])
-      const weight = Number(argv[7])
-      if (!sex.toLowerCase === 'f' || !sex.toLowerCase === 'm') {
-        console.log('Incorrect sex')
-      } else if (isNaN(age)) {
-        console.log('Age is not a number')
-      } else if (age < 18) {
-        console.log('Age is underaged')
-      } else if (isNaN(height)) {
-        console.log('Height is not a number')
-      } else if (isNaN(weight)) {
-        console.log('Weight is not a number')
+      const newBio = new BioStat(name, sex, age, height, weight)
+      if (errorMessage(newBio).length !== 0) {
+        console.log(`${errorMessage(newBio)}`)
       } else {
-        name = name.charAt(0).toUpperCase() + name.slice(1)
-        sex = sex.toUpperCase()
-        const newBio = new Bio(name, sex, age, height, weight)
         bioArray = create(newBio, bioArray)
         if (bioArray === null) {
           console.log('Name already exists')
         } else {
-          bioArray.shift()
           writeCSVFile('biostats.csv', bioArray)
         }
       }
     }
     break
-  case '-r':
+  }
+  case '-r': {
     if (argv.length !== 4) {
       console.log('You do not have the right number of arguments to run this command')
     } else {
-      const name = argv[3]
-      bioArray = read(name, bioArray)
+      bioArray = read(capitalCase(name), bioArray)
       if (bioArray === null) {
         console.log('Name does not exist')
       } else {
-        console.log(`name: ${bioArray.name}`)
-        switch (bioArray.sex) {
-          case 'F':
-            console.log('sex: Female')
-            break
-          case 'M':
-            console.log('sex: Male')
-            break
-          default:
-            console.log('no sex is available')
-        }
-        console.log(`age: ${bioArray.age}
-height: inches: ${bioArray.height} centimeters: ${(bioArray.height * 2.54).toFixed(2)}
-weight: pounds: ${bioArray.weight} kilograms: ${(bioArray.weight * 0.45359237).toFixed(2)}`)
+        console.log(`
+name: ${bioArray.name}
+sex: ${bioArray.sex === 'F' ? 'Female' : 'Male'}
+age: ${bioArray.age}
+height: inches: ${bioArray.height} centimeters: ${inToCm(bioArray.height).toFixed(2)}
+weight: pounds: ${bioArray.weight} kilograms: ${lbsToKg(bioArray.weight).toFixed(2)}
+`)
       }
     }
     break
-  case '-u':
+  }
+  case '-u': {
     if (argv.length !== 8) {
       console.log('You do not have the right number of arguments to run this command')
     } else {
-      let name = argv[3]
-      let sex = argv[4]
-      const age = Number(argv[5])
-      const height = Number(argv[6])
-      const weight = Number(argv[7])
-      if (!sex.toLowerCase === 'f' || !sex.toLowerCase === 'm') {
-        console.log('Incorrect sex')
-      } else if (isNaN(age)) {
-        console.log('Age is not a number')
-      } else if (age < 18) {
-        console.log('Age is underaged')
-      } else if (isNaN(height)) {
-        console.log('Height is not a number')
-      } else if (isNaN(weight)) {
-        console.log('Weight is not a number')
+      const newBio = new BioStat(name, sex, age, height, weight)
+      if (errorMessage(newBio).length !== 0) {
+        console.log(`${errorMessage(newBio)}`)
       } else {
-        name = name.charAt(0).toUpperCase() + name.slice(1)
-        sex = sex.toUpperCase()
-        const newBio = new Bio(name, sex, age, height, weight)
         bioArray = update(newBio, bioArray)
         if (bioArray === null) {
           console.log('Name does not exist')
         } else {
-          bioArray.shift()
           writeCSVFile('biostats.csv', bioArray)
         }
       }
     }
     break
-  case '-d':
+  }
+  case '-d': {
     if (argv.length !== 4) {
       console.log('You do not have the right number of arguments to run this command')
     } else {
-      const name = argv[3]
-      bioArray = deletion(name, bioArray)
+      bioArray = deletion(capitalCase(name), bioArray)
       if (bioArray === null) {
         console.log('Name does not exist')
       } else {
-        bioArray.shift()
         writeCSVFile('biostats.csv', bioArray)
       }
     }
     break
+  }
   default:
     console.log('Command does not exist')
 }
