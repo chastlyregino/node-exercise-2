@@ -1,6 +1,5 @@
 const fs = require('node:fs')
 const { argv } = require('node:process')
-
 const csvjson = require('csvjson')
 
 const capitalCase = (name) => name.charAt(0).toUpperCase() + name.substring(1).toLowerCase()
@@ -8,6 +7,7 @@ const capitalCase = (name) => name.charAt(0).toUpperCase() + name.substring(1).t
 const inToCm = (height) => height * 2.54
 
 const lbsToKg = (weight) => weight / 2.205
+
 class BioStat {
   constructor(name, sex, age, height, weight) {
     this.name = capitalCase(name)
